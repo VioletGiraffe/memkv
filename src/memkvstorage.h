@@ -14,7 +14,7 @@ public:
 	using iterator = typename ContainerType::iterator;
 	using const_iterator = typename ContainerType::const_iterator;
 
-	void insert(const KeyType key, const ValueType value);
+	iterator insert(const KeyType key, const ValueType value);
 
 	typename ContainerType::iterator findByKey(const KeyType key);
 
@@ -59,9 +59,9 @@ size_t MemKvStorage<KeyType, ValueType>::size() const
 }
 
 template <typename KeyType, typename ValueType>
-void MemKvStorage<KeyType, ValueType>::insert(const KeyType key, const ValueType value)
+typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::insert(const KeyType key, const ValueType value)
 {
-	_storage[key] = value;
+	return _storage.insert(std::make_pair(key, value)).first;
 }
 
 template<typename KeyType, typename ValueType>
