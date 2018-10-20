@@ -12,29 +12,73 @@ public:
 	using value_type = typename ContainerType::value_type;
 	using key_type = KeyType;
 	using iterator = typename ContainerType::iterator;
+	using const_iterator = typename ContainerType::const_iterator;
 
-	typename ContainerType::iterator findByKey(const KeyType key) const;
-	std::vector<typename ContainerType::iterator> findByValue(const ValueType value) const;
+	void insert(const KeyType key, const ValueType value);
 
-	iterator end() const;
+	typename ContainerType::iterator findByKey(const KeyType key);
+
+	template <typename Comparator>
+	std::vector<typename ContainerType::iterator> find_if(Comparator comp);
+
+	const_iterator begin() const;
+	iterator begin();
+
+	const_iterator end() const;
+	iterator end();
+
+	bool empty() const;
+	size_t size() const;
 
 private:
 	ContainerType _storage;
 };
 
+template <typename KeyType, typename ValueType>
+typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::begin()
+{
+	return _storage.begin();
+}
+
+template <typename KeyType, typename ValueType>
+typename MemKvStorage<KeyType, ValueType>::const_iterator MemKvStorage<KeyType, ValueType>::begin() const
+{
+	return _storage.begin();
+}
+
+template <typename KeyType, typename ValueType>
+bool MemKvStorage<KeyType, ValueType>::empty() const
+{
+	return _storage.empty();
+}
+
+template <typename KeyType, typename ValueType>
+size_t MemKvStorage<KeyType, ValueType>::size() const
+{
+	return _storage.size();
+}
+
+template <typename KeyType, typename ValueType>
+void MemKvStorage<KeyType, ValueType>::insert(const KeyType key, const ValueType value)
+{
+	_storage[key] = value;
+}
+
 template<typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::findByKey(const KeyType key) const
+typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::findByKey(const KeyType key)
 {
 	return _storage.find(key);
 }
 
-template<typename KeyType, typename ValueType>
-std::vector<typename MemKvStorage<KeyType, ValueType>::iterator> MemKvStorage<KeyType, ValueType>::findByValue(const ValueType value) const
+template <typename KeyType, typename ValueType>
+template <typename Comparator>
+std::vector<typename MemKvStorage<KeyType, ValueType>::ContainerType::iterator>
+MemKvStorage<KeyType, ValueType>::find_if(Comparator comp)
 {
 	std::vector<iterator> iteratorsToMatches;
-	for (const auto it = _storage.begin(); it != _storage.end(); ++it)
+	for (auto it = _storage.begin(); it != _storage.end(); ++it)
 	{
-		if (it->second == value)
+		if (comp(*it))
 			iteratorsToMatches.emplace_back(it);
 	}
 
@@ -42,7 +86,13 @@ std::vector<typename MemKvStorage<KeyType, ValueType>::iterator> MemKvStorage<Ke
 }
 
 template<typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::end() const
+typename MemKvStorage<KeyType, ValueType>::const_iterator MemKvStorage<KeyType, ValueType>::end() const
+{
+	return _storage.cend();
+}
+
+template<typename KeyType, typename ValueType>
+typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::end()
 {
 	return _storage.end();
 }
