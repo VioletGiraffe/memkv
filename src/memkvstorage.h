@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <vector>
 
 template <typename KeyType, typename ValueType>
@@ -11,40 +12,49 @@ public:
 
 	using value_type = typename ContainerType::value_type;
 	using key_type = KeyType;
-	using iterator = typename ContainerType::iterator;
-	using const_iterator = typename ContainerType::const_iterator;
 
-	iterator insert(const KeyType key, const ValueType value);
+	// Returns true if insertion took place, false if this key already existed and its value was reassigned.
+	template <typename KeyCompatibleType, typename ValueCompatibleType>
+	bool insert_or_assign(KeyCompatibleType&& key, ValueCompatibleType&& value);
+	// Inserts the item if it didn't exist, otherwise does nothing. Returns true if insertion took place.
+	template <typename KeyCompatibleType, typename ValueCompatibleType>
+	bool try_insert(KeyCompatibleType&& key, ValueCompatibleType&& value);
 
-	typename ContainerType::iterator findByKey(const KeyType key);
+	bool keyExists(const KeyType key) const;
+	std::optional<ValueType> findByKey(const KeyType key);
 
 	template <typename Comparator>
-	std::vector<typename ContainerType::iterator> find_if(Comparator comp);
+	std::optional<std::vector<std::pair<KeyType, ValueType>>> find_if(Comparator comp);
 
-	const_iterator begin() const;
-	iterator begin();
-
-	const_iterator end() const;
-	iterator end();
+	void eraseKey(const KeyType key);
+	template <typename Comparator>
+	void erase_if(Comparator comp);
 
 	bool empty() const;
 	size_t size() const;
+
+	// Dereferencing iterators is not thread-safe, handle with care!
+	auto begin() const { return _storage.begin(); }
+	auto end() const { return _storage.end(); }
 
 private:
 	ContainerType _storage;
 };
 
 template <typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::begin()
+template <typename KeyCompatibleType, typename ValueCompatibleType>
+bool MemKvStorage<KeyType, ValueType>::insert_or_assign(KeyCompatibleType&& key, ValueCompatibleType&& value)
 {
-	return _storage.begin();
+	return _storage.insert_or_assign(std::forward<KeyCompatibleType>(key), std::forward<ValueCompatibleType>(value)).second;
 }
 
 template <typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::const_iterator MemKvStorage<KeyType, ValueType>::begin() const
+template <typename KeyCompatibleType, typename ValueCompatibleType>
+bool MemKvStorage<KeyType, ValueType>::try_insert(KeyCompatibleType&& key, ValueCompatibleType&& value)
 {
-	return _storage.begin();
+	return _storage.try_emplace(std::forward<KeyCompatibleType>(key), std::forward<ValueCompatibleType>(value)).second;
 }
+
 
 template <typename KeyType, typename ValueType>
 bool MemKvStorage<KeyType, ValueType>::empty() const
@@ -58,41 +68,55 @@ size_t MemKvStorage<KeyType, ValueType>::size() const
 	return _storage.size();
 }
 
+
 template <typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::insert(const KeyType key, const ValueType value)
+bool MemKvStorage<KeyType, ValueType>::keyExists(const KeyType key) const
 {
-	return _storage.insert(std::make_pair(key, value)).first;
+	return _storage.count(key) > 0;
 }
 
+
 template<typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::findByKey(const KeyType key)
+std::optional<ValueType> MemKvStorage<KeyType, ValueType>::findByKey(const KeyType key)
 {
-	return _storage.find(key);
+	const auto item = _storage.find(key);
+	if (item != _storage.end())
+		return item->second;
+
+	return {};
 }
 
 template <typename KeyType, typename ValueType>
 template <typename Comparator>
-std::vector<typename MemKvStorage<KeyType, ValueType>::ContainerType::iterator>
+std::optional<std::vector<std::pair<KeyType, ValueType>>>
 MemKvStorage<KeyType, ValueType>::find_if(Comparator comp)
 {
-	std::vector<iterator> iteratorsToMatches;
+	std::vector<std::pair<KeyType, ValueType>> matchingItems;
+	matchingItems.reserve(500);
 	for (auto it = _storage.begin(); it != _storage.end(); ++it)
 	{
 		if (comp(*it))
-			iteratorsToMatches.emplace_back(it);
+			matchingItems.emplace_back(*it);
 	}
 
-	return iteratorsToMatches;
+	return matchingItems;
 }
 
 template<typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::const_iterator MemKvStorage<KeyType, ValueType>::end() const
+void MemKvStorage<KeyType, ValueType>::eraseKey(const KeyType key)
 {
-	return _storage.cend();
+	_storage.erase(key);
 }
 
-template<typename KeyType, typename ValueType>
-typename MemKvStorage<KeyType, ValueType>::iterator MemKvStorage<KeyType, ValueType>::end()
+template <typename KeyType, typename ValueType>
+template <typename Comparator>
+void MemKvStorage<KeyType, ValueType>::erase_if(Comparator comp)
 {
-	return _storage.end();
+	for (auto it = _storage.begin(); it != _storage.end();)
+	{
+		if (comp(*it))
+			it = _storage.erase(it);
+		else
+			++it;
+	}
 }
